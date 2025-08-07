@@ -42,17 +42,19 @@ export const AppDetail: React.FC<AppDetailProps> = ({
     point: number,
     value: string
   ) => {
-    setLabels((prev) => ({
-      ...prev,
+    const newLabels = {
+      ...labels,
       [type]: {
-        ...prev[type],
+        ...labels[type],
         [point]: value,
       },
-    }));
+    };
+    setLabels(newLabels);
+    onSave({ config, labels: newLabels }); // Save to parent state whenever labels change
   };
 
   const handleGenerate = () => {
-    onSave({ config, labels: { di: {}, do: {}, r: {} } });
+    onSave({ config, labels }); // Save current config and labels without resetting
   };
 
   const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
