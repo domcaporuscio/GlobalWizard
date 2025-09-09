@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { AppManagement } from "./components/AppManagement";
-import { AppDetail } from "./components/AppDetail";
+import AppManagement from "./components/AppManagement";
+import AppDetail from "./components/AppDetail";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import type { Apps, AppData } from "./types/types";
 import "./App.css";
@@ -13,12 +13,7 @@ export const App: React.FC = () => {
     setCurrentApp(appName);
   };
 
-  const handleSaveApp = (appName: string, appData: AppData) => {
-    setApps((prev) => ({
-      ...prev,
-      [appName]: appData,
-    }));
-  };
+  // No longer needed, AppDetail updates apps directly
 
   return (
     <div className="bg-slate-100 text-slate-800 min-h-screen">
@@ -26,7 +21,8 @@ export const App: React.FC = () => {
         <AppDetail
           appName={currentApp}
           appData={apps[currentApp]}
-          onSave={(appData) => handleSaveApp(currentApp, appData)}
+          apps={apps}
+          setApps={setApps}
           onBack={() => setCurrentApp(null)}
         />
       ) : (

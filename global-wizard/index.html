@@ -3,11 +3,1126 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Global Wizard</title>
+    <title>App-Based IO Label Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 8px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f5f9;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #94a3b8;
+        border-radius: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
+      }
+      .hidden {
+        display: none;
+      }
+    </style>
   </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+  <body class="bg-slate-100 text-slate-800">
+    <!-- App Management Screen -->
+    <div id="app-management-screen">
+      <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+        <header class="mb-8 flex justify-between items-center">
+          <div>
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-900">
+              App Manager
+            </h1>
+            <p class="text-slate-600 mt-2">
+              Create and manage your I/O configurations.
+            </p>
+          </div>
+          <button
+            id="export-all-btn"
+            class="bg-emerald-600 text-white font-semibold py-2 px-4 rounded-lg shadow-sm hover:bg-emerald-700 transition-colors duration-200"
+          >
+            Export All Apps (.zip)
+          </button>
+        </header>
+
+        <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
+          <div
+            class="flex flex-col sm:flex-row gap-4 mb-6 pb-6 border-b border-slate-200"
+          >
+            <input
+              type="text"
+              id="new-app-name"
+              placeholder="Enter new app name..."
+              class="flex-grow block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            />
+            <button
+              id="add-app-btn"
+              class="w-full sm:w-auto bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg shadow-sm hover:bg-indigo-700 transition-colors duration-200"
+            >
+              Create App
+            </button>
+          </div>
+
+          <h2 class="text-xl font-semibold text-slate-900 mb-4">
+            Existing Apps
+          </h2>
+          <div id="app-list" class="space-y-3">
+            <!-- App list will be dynamically generated here -->
+            <p id="no-apps-message" class="text-slate-500">
+              No apps found. Create one to get started.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- App Detail/Editor Screen -->
+    <div id="app-detail-screen" class="hidden">
+      <div class="container mx-auto p-4 md:p-8 max-w-screen-2xl">
+        <header class="mb-8">
+          <h1
+            id="app-detail-title"
+            class="text-3xl md:text-4xl font-bold text-slate-900"
+          ></h1>
+          <p class="text-slate-600 mt-2">
+            Define, label, import, and export your digital I/O and Register
+            configurations for this app.
+          </p>
+        </header>
+
+        <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
+          <div
+            class="grid grid-cols-1 md:grid-cols-4 gap-6 border-b border-slate-200 pb-8 mb-8"
+          >
+            <div class="md:col-span-3">
+              <div class="flex items-center gap-4">
+                <button
+                  id="back-to-apps-btn"
+                  class="bg-slate-200 text-slate-800 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300 transition-colors duration-200"
+                >
+                  &larr; Back
+                </button>
+                <h2 class="text-xl font-semibold text-slate-900">
+                  Configuration
+                </h2>
+              </div>
+            </div>
+            <div
+              class="md:col-span-1 flex items-end justify-start md:justify-end space-x-3"
+            >
+              <button
+                id="import-btn"
+                class="w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg shadow-sm hover:bg-indigo-700 transition-colors duration-200"
+              >
+                Import
+              </button>
+              <input type="file" id="file-input" class="hidden" accept=".dt" />
+                <button
+                  id="export-app-btn"
+                  class="w-full bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-sm hover:bg-green-700 transition-colors duration-200"
+                >
+                  Export Manifest
+                </button>
+            </div>
+
+            <!-- Updated Configuration Section -->
+            <div
+              class="md:col-span-4 grid grid-cols-1 lg:grid-cols-3 gap-x-8 gap-y-6"
+            >
+              <!-- DI Config -->
+              <div class="p-4 bg-slate-50 rounded-lg border">
+                <h3 class="font-semibold text-slate-800 mb-3">
+                  Digital Inputs (DI)
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      for="di-size"
+                      class="block text-sm font-medium text-slate-700"
+                      >Size</label
+                    >
+                    <input
+                      type="number"
+                      id="di-size"
+                      value="16"
+                      min="0"
+                      class="config-input mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      for="di-start-point"
+                      class="block text-sm font-medium text-slate-700"
+                      >Start Point</label
+                    >
+                    <input
+                      type="number"
+                      id="di-start-point"
+                      value="1"
+                      min="0"
+                      class="config-input mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+              <!-- DO Config -->
+              <div class="p-4 bg-slate-50 rounded-lg border">
+                <h3 class="font-semibold text-slate-800 mb-3">
+                  Digital Outputs (DO)
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      for="do-size"
+                      class="block text-sm font-medium text-slate-700"
+                      >Size</label
+                    >
+                    <input
+                      type="number"
+                      id="do-size"
+                      value="16"
+                      min="0"
+                      class="config-input mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      for="do-start-point"
+                      class="block text-sm font-medium text-slate-700"
+                      >Start Point</label
+                    >
+                    <input
+                      type="number"
+                      id="do-start-point"
+                      value="1"
+                      min="0"
+                      class="config-input mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+              <!-- R Config -->
+              <div class="p-4 bg-slate-50 rounded-lg border">
+                <h3 class="font-semibold text-slate-800 mb-3">Registers (R)</h3>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      for="r-size"
+                      class="block text-sm font-medium text-slate-700"
+                      >Size</label
+                    >
+                    <input
+                      type="number"
+                      id="r-size"
+                      value="16"
+                      min="0"
+                      class="config-input mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      for="r-start-point"
+                      class="block text-sm font-medium text-slate-700"
+                      >Start Point</label
+                    >
+                    <input
+                      type="number"
+                      id="r-start-point"
+                      value="1"
+                      min="0"
+                      class="config-input mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="md:col-span-4 mt-4">
+              <button
+                id="generate-btn"
+                class="w-full md:w-auto bg-slate-800 text-white font-semibold py-2 px-6 rounded-lg shadow-sm hover:bg-slate-900 transition-colors duration-200"
+              >
+                Generate Fields
+              </button>
+            </div>
+          </div>
+
+          <div
+            id="io-container"
+            class="grid grid-cols-1 lg:grid-cols-3 gap-8 hidden"
+          >
+            <div id="di-container">
+              <h3 class="text-lg font-semibold text-slate-900 mb-4">DI</h3>
+              <div id="di-table-container" class="max-h-[60vh] overflow-y-auto custom-scrollbar pr-2"></div>
+            </div>
+            <div id="do-container">
+              <h3 class="text-lg font-semibold text-slate-900 mb-4">DO</h3>
+              <div id="do-table-container" class="max-h-[60vh] overflow-y-auto custom-scrollbar pr-2"></div>
+            </div>
+            <div id="r-container">
+              <h3 class="text-lg font-semibold text-slate-900 mb-4">Registers (R)</h3>
+              <div id="r-table-container" class="max-h-[60vh] overflow-y-auto custom-scrollbar pr-2"></div>
+            </div>
+            <div id="ui-container">
+              <h3 class="text-lg font-semibold text-slate-900 mb-4">User Inputs (UI)</h3>
+              <div id="ui-table-container" class="max-h-[60vh] overflow-y-auto custom-scrollbar pr-2"></div>
+            </div>
+            <div id="uo-container">
+              <h3 class="text-lg font-semibold text-slate-900 mb-4">User Outputs (UO)</h3>
+              <div id="uo-table-container" class="max-h-[60vh] overflow-y-auto custom-scrollbar pr-2"></div>
+            </div>
+            <div id="flags-container">
+              <h3 class="text-lg font-semibold text-slate-900 mb-4">Flags</h3>
+              <div id="flags-table-container" class="max-h-[60vh] overflow-y-auto custom-scrollbar pr-2"></div>
+            </div>
+            <div id="gi-container">
+              <h3 class="text-lg font-semibold text-slate-900 mb-4">Group Inputs (GI)</h3>
+              <button id="add-gi-btn" class="mb-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Add Group Input</button>
+              <div id="gi-table-container" class="max-h-[60vh] overflow-y-auto custom-scrollbar pr-2"></div>
+            </div>
+            <div id="go-container">
+              <h3 class="text-lg font-semibold text-slate-900 mb-4">Group Outputs (GO)</h3>
+              <button id="add-go-btn" class="mb-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Add Group Output</button>
+              <div id="go-table-container" class="max-h-[60vh] overflow-y-auto custom-scrollbar pr-2"></div>
+            </div>
+            <div id="setvar-container">
+              <h3 class="text-lg font-semibold text-slate-900 mb-4">System Variables (SETVAR)</h3>
+              <button id="add-setvar-btn" class="mb-2 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Add Variable</button>
+              <div id="setvar-table-container" class="max-h-[60vh] overflow-y-auto custom-scrollbar pr-2"></div>
+            </div>
+          </div>
+          <div id="welcome-message" class="text-center py-16">
+            <svg
+              class="mx-auto h-12 w-12 text-slate-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                vector-effect="non-scaling-stroke"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2z"
+              />
+            </svg>
+            <h3 class="mt-2 text-sm font-semibold text-slate-900">
+              No Fields Generated
+            </h3>
+            <p class="mt-1 text-sm text-slate-500">
+              Configure and click "Generate Fields" to start labeling.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        // --- State Management ---
+        let currentAppName = null;
+        const APP_STORAGE_KEY = "ioLabelerApps";
+
+        // --- DOM Element References ---
+        const appManagementScreen = document.getElementById(
+          "app-management-screen"
+        );
+        const appDetailScreen = document.getElementById("app-detail-screen");
+        const appListContainer = document.getElementById("app-list");
+        const newAppNameInput = document.getElementById("new-app-name");
+        const addAppBtn = document.getElementById("add-app-btn");
+        const noAppsMessage = document.getElementById("no-apps-message");
+        const backToAppsBtn = document.getElementById("back-to-apps-btn");
+        const appDetailTitle = document.getElementById("app-detail-title");
+        const exportAllBtn = document.getElementById("export-all-btn");
+    const exportAppBtn = document.getElementById("export-app-btn");
+
+
+  // Detail Screen Elements
+  const diSizeInput = document.getElementById("di-size");
+  const doSizeInput = document.getElementById("do-size");
+  const rSizeInput = document.getElementById("r-size");
+  const diStartPointInput = document.getElementById("di-start-point");
+  const doStartPointInput = document.getElementById("do-start-point");
+  const rStartPointInput = document.getElementById("r-start-point");
+
+  const generateBtn = document.getElementById("generate-btn");
+  const importBtn = document.getElementById("import-btn");
+  const fileInput = document.getElementById("file-input");
+  const diTableContainer = document.getElementById("di-table-container");
+  const doTableContainer = document.getElementById("do-table-container");
+  const rTableContainer = document.getElementById("r-table-container");
+  const ioContainer = document.getElementById("io-container");
+  const welcomeMessage = document.getElementById("welcome-message");
+  // New containers/buttons for GI, GO, SETVAR
+  const giTableContainer = document.getElementById("gi-table-container");
+  const goTableContainer = document.getElementById("go-table-container");
+  const setvarTableContainer = document.getElementById("setvar-table-container");
+  const addGiBtn = document.getElementById("add-gi-btn");
+  const addGoBtn = document.getElementById("add-go-btn");
+  const addSetvarBtn = document.getElementById("add-setvar-btn");
+
+        // --- Local Storage Functions ---
+        const getApps = () =>
+          JSON.parse(localStorage.getItem(APP_STORAGE_KEY)) || {};
+        const saveApps = (apps) =>
+          localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(apps));
+
+        // --- App Management Logic ---
+        const renderAppList = () => {
+          const apps = getApps();
+          const appNames = Object.keys(apps);
+          appListContainer.innerHTML = ""; // Clear list
+
+          if (appNames.length === 0) {
+            noAppsMessage.classList.remove("hidden");
+          } else {
+            noAppsMessage.classList.add("hidden");
+            appNames.sort().forEach((appName) => {
+              const appElement = document.createElement("div");
+              appElement.className =
+                "flex justify-between items-center p-4 bg-slate-50 rounded-lg border border-slate-200";
+              appElement.innerHTML = `
+                        <span class="font-medium text-slate-800">${appName}</span>
+                        <div>
+                            <button data-appname="${appName}" class="select-app-btn text-indigo-600 hover:text-indigo-800 font-semibold mr-4">Open</button>
+                            <button data-appname="${appName}" class="delete-app-btn text-red-500 hover:text-red-700 font-semibold">Delete</button>
+                        </div>
+                    `;
+              appListContainer.appendChild(appElement);
+            });
+          }
+        };
+
+        addAppBtn.addEventListener("click", () => {
+          const appName = newAppNameInput.value.trim();
+          if (!appName) {
+            alert("Please enter a valid app name.");
+            return;
+          }
+          const apps = getApps();
+          if (apps[appName]) {
+            alert("An app with this name already exists.");
+            return;
+          }
+          apps[appName] = {
+            config: {
+              diSize: 16,
+              diStartPoint: 1,
+              doSize: 16,
+              doStartPoint: 1,
+              rSize: 16,
+              rStartPoint: 1,
+            },
+            labels: { di: {}, do: {}, r: {} },
+          };
+          saveApps(apps);
+          newAppNameInput.value = "";
+          renderAppList();
+        });
+
+        appListContainer.addEventListener("click", (e) => {
+          const appName = e.target.dataset.appname;
+          if (!appName) return;
+
+          if (e.target.classList.contains("select-app-btn")) {
+            currentAppName = appName;
+            loadAppDetail(appName);
+            appManagementScreen.classList.add("hidden");
+            appDetailScreen.classList.remove("hidden");
+          }
+          if (e.target.classList.contains("delete-app-btn")) {
+            if (
+              confirm(
+                `Are you sure you want to delete the app "${appName}"? This cannot be undone.`
+              )
+            ) {
+              const apps = getApps();
+              delete apps[appName];
+              saveApps(apps);
+              renderAppList();
+            }
+          }
+        });
+
+        backToAppsBtn.addEventListener("click", () => {
+          saveCurrentApp(); // Auto-save on leaving
+          currentAppName = null;
+          appManagementScreen.classList.remove("hidden");
+          appDetailScreen.classList.add("hidden");
+          renderAppList();
+        });
+
+        // --- App Detail Logic ---
+
+        const loadAppDetail = (appName) => {
+          const apps = getApps();
+          const appData = apps[appName];
+          if (!appData) return;
+
+          appDetailTitle.textContent = `Editing: ${appName}`;
+          const { config, labels, gi = [], go = [], setvar = [] } = appData;
+
+          diSizeInput.value = config.diSize;
+          diStartPointInput.value = config.diStartPoint;
+          doSizeInput.value = config.doSize;
+          doStartPointInput.value = config.doStartPoint;
+          rSizeInput.value = config.rSize;
+          rStartPointInput.value = config.rStartPoint;
+
+          generateIOFields(labels);
+          renderGiTable(gi);
+          renderGoTable(go);
+          renderSetvarTable(setvar);
+        };
+
+
+        const saveCurrentApp = () => {
+          if (!currentAppName) return;
+          const apps = getApps();
+          if (!apps || !apps[currentAppName]) return;
+
+          const labels = { di: {}, do: {}, r: {} };
+          document
+            .querySelectorAll('#io-container input[type="text"]')
+            .forEach((input) => {
+              const { type, point } = input.dataset;
+              const label = input.value.trim();
+              if (label && type && point && labels[type]) {
+                labels[type][point] = label;
+              }
+            });
+
+          // GI
+          const gi = [];
+          giTableContainer.querySelectorAll(".gi-row").forEach(row => {
+            const number = parseInt(row.querySelector(".gi-number").value);
+            const name = row.querySelector(".gi-name").value;
+            const rack = parseInt(row.querySelector(".gi-rack").value);
+            const slot = parseInt(row.querySelector(".gi-slot").value);
+            const start = parseInt(row.querySelector(".gi-start").value);
+            const length = parseInt(row.querySelector(".gi-length").value);
+            if (!isNaN(number) && name) {
+              gi.push({ number, name, rack, slot, start, length });
+            }
+          });
+          // GO
+          const go = [];
+          goTableContainer.querySelectorAll(".go-row").forEach(row => {
+            const number = parseInt(row.querySelector(".go-number").value);
+            const name = row.querySelector(".go-name").value;
+            const rack = parseInt(row.querySelector(".go-rack").value);
+            const slot = parseInt(row.querySelector(".go-slot").value);
+            const start = parseInt(row.querySelector(".go-start").value);
+            const length = parseInt(row.querySelector(".go-length").value);
+            if (!isNaN(number) && name) {
+              go.push({ number, name, rack, slot, start, length });
+            }
+          });
+          // SETVAR
+          const setvar = [];
+          setvarTableContainer.querySelectorAll(".setvar-row").forEach(row => {
+            const key = row.querySelector(".setvar-key").value;
+            const value = row.querySelector(".setvar-value").value;
+            if (key && value) {
+              setvar.push({ key, value });
+            }
+          });
+
+          apps[currentAppName] = {
+            config: {
+              diSize: parseInt(diSizeInput.value) || 0,
+              diStartPoint: parseInt(diStartPointInput.value) || 0,
+              doSize: parseInt(doSizeInput.value) || 0,
+              doStartPoint: parseInt(doStartPointInput.value) || 0,
+              rSize: parseInt(rSizeInput.value) || 0,
+              rStartPoint: parseInt(rStartPointInput.value) || 0,
+            },
+            labels: labels,
+            gi,
+            go,
+            setvar
+          };
+          saveApps(apps);
+        };
+
+        generateBtn.addEventListener("click", () => {
+          const apps = getApps();
+          apps[currentAppName].labels = { di: {}, do: {}, r: {} };
+          saveApps(apps);
+          generateIOFields();
+          saveCurrentApp();
+        });
+
+        document.querySelectorAll(".config-input").forEach((input) => {
+          input.addEventListener("change", saveCurrentApp);
+        });
+
+        appDetailScreen.addEventListener("change", (e) => {
+          if (e.target.matches("input[data-point]")) {
+            saveCurrentApp();
+          }
+        });
+
+        function generateIOFields(prefillData = { di: {}, do: {}, r: {} }) {
+          const config = {
+            diSize: parseInt(diSizeInput.value) || 0,
+            diStartPoint: parseInt(diStartPointInput.value) || 0,
+            doSize: parseInt(doSizeInput.value) || 0,
+            doStartPoint: parseInt(doStartPointInput.value) || 0,
+            rSize: parseInt(rSizeInput.value) || 0,
+            rStartPoint: parseInt(rStartPointInput.value) || 0,
+          };
+
+          diTableContainer.innerHTML = "";
+          doTableContainer.innerHTML = "";
+          rTableContainer.innerHTML = "";
+
+          if (
+            config.diSize === 0 &&
+            config.doSize === 0 &&
+            config.rSize === 0
+          ) {
+            welcomeMessage.classList.remove("hidden");
+            ioContainer.classList.add("hidden");
+            return;
+          }
+
+          welcomeMessage.classList.add("hidden");
+          ioContainer.classList.remove("hidden");
+
+          const createTableContent = (
+            container,
+            type,
+            size,
+            startPoint,
+            data
+          ) => {
+            if (size > 0) {
+              const table = createTable(type);
+              for (let i = 0; i < size; i++) {
+                const pointNumber = startPoint + i;
+                const label = data[pointNumber] || "";
+                const row = createTableRow(type, pointNumber, label);
+                table.appendChild(row);
+              }
+              container.appendChild(table);
+            }
+          };
+
+          createTableContent(
+            diTableContainer,
+            "di",
+            config.diSize,
+            config.diStartPoint,
+            prefillData.di || {}
+          );
+          createTableContent(
+            doTableContainer,
+            "do",
+            config.doSize,
+            config.doStartPoint,
+            prefillData.do || {}
+          );
+          createTableContent(
+            rTableContainer,
+            "r",
+            config.rSize,
+            config.rStartPoint,
+            prefillData.r || {}
+          );
+        }
+
+        function createTable(type) {
+          const table = document.createElement("table");
+          table.className = "w-full text-sm text-left text-slate-500";
+          table.innerHTML = `<thead class="text-xs text-slate-700 uppercase bg-slate-50 sticky top-0"><tr><th scope="col" class="px-4 py-3 w-1/4">Point</th><th scope="col" class="px-4 py-3">Label</th></tr></thead><tbody></tbody>`;
+          return table;
+        }
+
+        function createTableRow(type, pointNumber, label) {
+          const tr = document.createElement("tr");
+          tr.className = "bg-white border-b";
+          tr.innerHTML = `<td class="px-4 py-2 font-medium text-slate-900 whitespace-nowrap">${pointNumber}</td><td class="px-4 py-2"><input type="text" data-type="${type}" data-point="${pointNumber}" value="${label}" class="w-full bg-transparent border-0 focus:ring-0 p-0 m-0 text-slate-700" placeholder="Enter label..."></td>`;
+          return tr;
+        }
+
+        // --- GI/GO/SETVAR Table Logic ---
+        function renderGiTable(giArr = []) {
+          giTableContainer.innerHTML = "";
+          // Add labels above the fields
+          const labelRow = document.createElement("div");
+          labelRow.className = "gi-label-row flex gap-2 mb-2 items-center font-semibold text-xs text-slate-700";
+          labelRow.innerHTML = `
+            <span class='w-16 block'>#</span>
+            <span class='w-32 block'>Name</span>
+            <span class='w-16 block'>RACK</span>
+            <span class='w-16 block'>SLOT</span>
+            <span class='w-16 block'>START</span>
+            <span class='w-16 block'>RANGE</span>
+            <span class='w-20 block'></span>
+          `;
+          giTableContainer.appendChild(labelRow);
+          giArr.forEach((gi, idx) => {
+            const row = document.createElement("div");
+            row.className = "gi-row flex gap-2 mb-2 items-center";
+            row.innerHTML = `
+              <input type="number" class="gi-number p-1 border rounded w-16" value="${gi.number}" placeholder="Number">
+              <input type="text" class="gi-name p-1 border rounded w-32" value="${gi.name}" placeholder="Name">
+              <input type="number" class="gi-rack p-1 border rounded w-16" value="${gi.rack}" placeholder="Rack">
+              <input type="number" class="gi-slot p-1 border rounded w-16" value="${gi.slot}" placeholder="Slot">
+              <input type="number" class="gi-start p-1 border rounded w-16" value="${gi.start}" placeholder="Start">
+              <input type="number" class="gi-length p-1 border rounded w-16" value="${gi.length}" placeholder="Range">
+              <button class="remove-gi-btn text-red-600 hover:underline">Remove</button>
+            `;
+            row.querySelector(".remove-gi-btn").addEventListener("click", () => {
+              giArr.splice(idx, 1);
+              renderGiTable(giArr);
+              saveCurrentApp();
+            });
+            giTableContainer.appendChild(row);
+          });
+        }
+        function renderGoTable(goArr = []) {
+  goTableContainer.innerHTML = "";
+  // Add labels above the fields
+  const labelRow = document.createElement("div");
+  labelRow.className = "go-label-row flex gap-2 mb-2 items-center font-semibold text-xs text-slate-700";
+  labelRow.innerHTML = `
+    <span class='w-16 block'>#</span>
+    <span class='w-32 block'>Name</span>
+    <span class='w-16 block'>RACK</span>
+    <span class='w-16 block'>SLOT</span>
+    <span class='w-16 block'>START</span>
+    <span class='w-16 block'>RANGE</span>
+    <span class='w-20 block'></span>
+  `;
+  goTableContainer.appendChild(labelRow);
+  goArr.forEach((go, idx) => {
+    const row = document.createElement("div");
+    row.className = "go-row flex gap-2 mb-2 items-center";
+    row.innerHTML = `
+      <input type="number" class="go-number p-1 border rounded w-16" value="${go.number}" placeholder="Number">
+      <input type="text" class="go-name p-1 border rounded w-32" value="${go.name}" placeholder="Name">
+      <input type="number" class="go-rack p-1 border rounded w-16" value="${go.rack}" placeholder="Rack">
+      <input type="number" class="go-slot p-1 border rounded w-16" value="${go.slot}" placeholder="Slot">
+      <input type="number" class="go-start p-1 border rounded w-16" value="${go.start}" placeholder="Start">
+      <input type="number" class="go-length p-1 border rounded w-16" value="${go.length}" placeholder="Range">
+      <button class="remove-go-btn text-red-600 hover:underline">Remove</button>
+    `;
+    row.querySelector(".remove-go-btn").addEventListener("click", () => {
+      goArr.splice(idx, 1);
+      const apps = getApps();
+      const appData = apps[currentAppName];
+      appData.go = goArr;
+      saveApps(apps);
+      renderGoTable(goArr);
+      saveCurrentApp();
+    });
+    goTableContainer.appendChild(row);
+  });
+      }
+        function renderSetvarTable(setvarArr = []) {
+          setvarTableContainer.innerHTML = "";
+          setvarArr.forEach((sv, idx) => {
+            const row = document.createElement("div");
+            row.className = "setvar-row flex gap-2 mb-2 items-center";
+            row.innerHTML = `
+              <input type="text" class="setvar-key p-1 border rounded w-32" value="${sv.key}" placeholder="Key">
+              <input type="text" class="setvar-value p-1 border rounded w-32" value="${sv.value}" placeholder="Value">
+              <button class="remove-setvar-btn text-red-600 hover:underline">Remove</button>
+            `;
+            row.querySelector(".remove-setvar-btn").addEventListener("click", () => {
+              setvarArr.splice(idx, 1);
+              renderSetvarTable(setvarArr);
+              saveCurrentApp();
+            });
+            setvarTableContainer.appendChild(row);
+          });
+        }
+
+        addGiBtn.addEventListener("click", () => {
+            saveCurrentApp(); // persist current values first
+            const apps = getApps();
+            const appData = apps[currentAppName];
+            if (!Array.isArray(appData.gi)) appData.gi = [];
+            appData.gi.push({ number: appData.gi.length + 1, name: "", rack: 0, slot: 0, start: 0, length: 0 });
+            saveApps(apps);
+            renderGiTable(appData.gi);
+        });
+        addGoBtn.addEventListener("click", () => {
+          saveCurrentApp(); // persist current values first
+          const apps = getApps();
+          const appData = apps[currentAppName];
+          if (!Array.isArray(appData.go)) appData.go = [];
+          appData.go.push({ number: appData.go.length + 1, name: "", rack: 0, slot: 0, start: 0, length: 0 });
+          saveApps(apps);
+          renderGoTable(appData.go);
+        });
+        addSetvarBtn.addEventListener("click", () => {
+          const apps = getApps();
+          const appData = apps[currentAppName];
+          if (!appData.setvar) appData.setvar = [];
+          appData.setvar.push({ key: "", value: "" });
+          saveApps(apps);
+          renderSetvarTable(appData.setvar);
+        });
+        importBtn.addEventListener("click", () => fileInput.click());
+        fileInput.addEventListener("change", handleFileImport);
+
+        function handleFileImport(e) {
+          const file = e.target.files[0];
+          if (!file || !currentAppName) return;
+          const reader = new FileReader();
+          reader.onload = (re) => {
+            const content = re.target.result;
+            try {
+              const apps = getApps();
+              const currentApp = apps[currentAppName];
+              // Section parsing
+              // Robust section parsing
+              const sectionRegex = /\[(\/)?([A-Za-z_]+)\]/g;
+              let match;
+              const sections = {};
+              let lastIndex = 0;
+              let lastSection = null;
+              let lastIsEnd = false;
+              while ((match = sectionRegex.exec(content)) !== null) {
+                const isEnd = !!match[1];
+                const sectionName = match[2];
+                if (lastSection && !lastIsEnd) {
+                  sections[lastSection] = content.substring(lastIndex, match.index).trim();
+                }
+                lastSection = sectionName;
+                lastIsEnd = isEnd;
+                lastIndex = sectionRegex.lastIndex;
+              }
+              // Capture last section
+              if (lastSection && !lastIsEnd) {
+                sections[lastSection] = content.substring(lastIndex).trim();
+              }
+              // Helper to parse key-value pairs
+              function parseLabels(content) {
+                const lines = content.split(/\r?\n/);
+                const labels = {};
+                lines.forEach(line => {
+                  const m = line.match(/^(\d+),\s*"?(.*?)"?$/);
+                  if (m) {
+                    labels[Number(m[1])] = m[2];
+                  }
+                });
+                return labels;
+              }
+              // Helper to parse config values
+              function parseConfig(content, keys) {
+                const config = {};
+                keys.forEach(key => {
+                  const m = content.match(new RegExp(`${key}:\s*(\d+)`));
+                  if (m) config[key] = Number(m[1]);
+                });
+                return config;
+              }
+              // Parse DI
+              let newConfig = currentApp.config ? { ...currentApp.config } : {};
+              let newLabels = currentApp.labels ? { ...currentApp.labels } : { di: {}, do: {}, r: {} };
+              if (sections["DI"]) {
+                newLabels.di = parseLabels(sections["DI"]);
+                const diConfig = parseConfig(sections["DI"], ["RACK", "SLOT", "START"]);
+                if (diConfig["RACK"] !== undefined) newConfig.diRack = diConfig["RACK"];
+                if (diConfig["SLOT"] !== undefined) newConfig.diSlot = diConfig["SLOT"];
+                if (diConfig["START"] !== undefined) newConfig.diStartPoint = diConfig["START"];
+                newConfig.diSize = Object.keys(newLabels.di).length;
+              }
+              // Parse DO
+              if (sections["DO"]) {
+                newLabels.do = parseLabels(sections["DO"]);
+                const doConfig = parseConfig(sections["DO"], ["RACK", "SLOT", "START"]);
+                if (doConfig["RACK"] !== undefined) newConfig.doRack = doConfig["RACK"];
+                if (doConfig["SLOT"] !== undefined) newConfig.doSlot = doConfig["SLOT"];
+                if (doConfig["START"] !== undefined) newConfig.doStartPoint = doConfig["START"];
+                newConfig.doSize = Object.keys(newLabels.do).length;
+              }
+              // Parse Registers
+              if (sections["R"] || sections["Registers"]) {
+                const rSection = sections["R"] || sections["Registers"];
+                let rStartPoint = 1;
+                let rLabels = {};
+                rSection.split(/\r?\n/).forEach(line => {
+                  if (line.startsWith("START:")) {
+                    rStartPoint = Number(line.split(":")[1].trim());
+                  } else {
+                    const m = line.match(/^(\d+),\s*"?(.*?)"?$/);
+                    if (m) {
+                      rLabels[Number(m[1])] = m[2];
+                    }
+                  }
+                });
+                newLabels.r = rLabels;
+                newConfig.rSize = Object.keys(rLabels).length;
+                newConfig.rStartPoint = rStartPoint;
+              }
+              // Parse SETVAR (first)
+              let newSetvar = [];
+              if (sections["SETVAR"]) {
+                const setvarLines = sections["SETVAR"].split(/\r?\n/).filter(Boolean);
+                setvarLines.forEach(line => {
+                  const m = line.match(/^([^=]+)=\s*(.*)$/);
+                  if (m) {
+                    const key = m[1].trim();
+                    const value = m[2].trim();
+                    newSetvar.push({ key, value });
+                  }
+                });
+              }
+              // Parse GI
+              let newGI = [];
+              if (sections["GI"]) {
+                const giLines = sections["GI"].split(/\r?\n/).filter(Boolean);
+                let currentGI = {};
+                giLines.forEach(line => {
+                  if (line.startsWith("RACK:")) currentGI.rack = Number(line.split(":")[1]);
+                  else if (line.startsWith("SLOT:")) currentGI.slot = Number(line.split(":")[1]);
+                  else if (line.startsWith("START:")) currentGI.start = Number(line.split(":")[1]);
+                  else if (line.startsWith("LENGTH:")) currentGI.length = Number(line.split(":")[1]);
+                  else if (line.startsWith("RANGE:")) currentGI.range = line.split(":")[1].trim();
+                  else if (line.match(/^\d+,/)) {
+                    const m = line.match(/^(\d+),\s*"(.*?)"$/);
+                    if (m) {
+                      currentGI.number = Number(m[1]);
+                      currentGI.name = m[2];
+                      newGI.push({ ...currentGI });
+                      currentGI = {};
+                    }
+                  }
+                });
+              }
+              // Parse GO
+              let newGO = [];
+              if (sections["GO"]) {
+                const goLines = sections["GO"].split(/\r?\n/).filter(Boolean);
+                let currentGO = {};
+                goLines.forEach(line => {
+                  if (line.startsWith("RACK:")) currentGO.rack = Number(line.split(":")[1]);
+                  else if (line.startsWith("SLOT:")) currentGO.slot = Number(line.split(":")[1]);
+                  else if (line.startsWith("START:")) currentGO.start = Number(line.split(":")[1]);
+                  else if (line.startsWith("LENGTH:")) currentGO.length = Number(line.split(":")[1]);
+                  else if (line.startsWith("RANGE:")) currentGO.range = line.split(":")[1].trim();
+                  else if (line.match(/^\d+,/)) {
+                    const m = line.match(/^(\d+),\s*"(.*?)"$/);
+                    if (m) {
+                      currentGO.number = Number(m[1]);
+                      currentGO.name = m[2];
+                      newGO.push({ ...currentGO });
+                      currentGO = {};
+                    }
+                  }
+                });
+              }
+              // Assign to app and re-render
+              currentApp.config = newConfig;
+              currentApp.labels = newLabels;
+              currentApp.gi = newGI;
+              currentApp.go = newGO;
+              currentApp.setvar = newSetvar;
+              saveApps(apps);
+              loadAppDetail(currentAppName);
+            } catch (error) {
+              console.error("Failed to parse imported file:", error);
+              alert("Error: Could not parse the file. Please ensure it is in the correct format.");
+            }
+          };
+          reader.readAsText(file);
+          fileInput.value = "";
+        }
+
+        exportAllBtn.addEventListener("click", () => {
+          const apps = getApps();
+          const appNames = Object.keys(apps);
+          if (appNames.length === 0) {
+            alert("No apps to export.");
+            return;
+          }
+
+          const zip = new JSZip();
+          appNames.forEach((appName) => {
+            const appData = apps[appName];
+            const { config, labels, gi, go, setvar } = appData;
+            let manifestContent = "";
+            // DI Section
+            if (config.diSize > 0) {
+              manifestContent += `[DI]\n`;
+              manifestContent += `RACK: ${config.diRack ?? ''}\n`;
+              manifestContent += `SLOT: ${config.diSlot ?? ''}\n`;
+              manifestContent += `START: ${config.diStartPoint}\n`;
+              manifestContent += `RANGE: ${config.diStartPoint} - ${config.diStartPoint + config.diSize - 1}\n`;
+              for (let i = 0; i < config.diSize; i++) {
+                const point = config.diStartPoint + i;
+                manifestContent += `${point}, "${labels.di?.[point] ?? ''}"\n`;
+              }
+              manifestContent += `[\/DI]\n\n`;
+            }
+            // DO Section
+            if (config.doSize > 0) {
+              manifestContent += `[DO]\n`;
+              manifestContent += `RACK: ${config.doRack ?? ''}\n`;
+              manifestContent += `SLOT: ${config.doSlot ?? ''}\n`;
+              manifestContent += `START: ${config.doStartPoint}\n`;
+              manifestContent += `RANGE: ${config.doStartPoint} - ${config.doStartPoint + config.doSize - 1}\n`;
+              for (let i = 0; i < config.doSize; i++) {
+                const point = config.doStartPoint + i;
+                manifestContent += `${point}, "${labels.do?.[point] ?? ''}"\n`;
+              }
+              manifestContent += `[\/DO]\n\n`;
+            }
+            // Registers Section
+            if (config.rSize > 0) {
+              manifestContent += `[Registers]\n`;
+              manifestContent += `START: ${config.rStartPoint}\n`;
+              manifestContent += `RANGE: ${config.rStartPoint} - ${config.rStartPoint + config.rSize - 1}\n`;
+              for (let i = 0; i < config.rSize; i++) {
+                const point = config.rStartPoint + i;
+                manifestContent += `${point}, "${labels.r?.[point] ?? ''}"\n`;
+              }
+              manifestContent += `[\/Registers]\n\n`;
+            }
+            // SETVAR Section (first)
+            if (setvar.length > 0) {
+              manifestContent += `[SETVAR]\n`;
+              setvar.forEach((row) => {
+                manifestContent += `${row.key} = ${row.value}\n`;
+              });
+              manifestContent += `[\/SETVAR]\n\n`;
+            }
+            // GI Section
+            if (gi.length > 0) {
+              manifestContent += `[GI]\n`;
+              gi.forEach((row) => {
+                manifestContent += `RACK: ${row.rack}\nSLOT: ${row.slot}\nSTART: ${row.start}\nLENGTH: ${row.length}\nRANGE: ${row.number} - ${row.number}\n${row.number}, "${row.name}"\n`;
+              });
+              manifestContent += `[\/GI]\n\n`;
+            }
+            // GO Section
+            if (go.length > 0) {
+              manifestContent += `[GO]\n`;
+              go.forEach((row) => {
+                manifestContent += `RACK: ${row.rack}\nSLOT: ${row.slot}\nSTART: ${row.start}\nLENGTH: ${row.length}\nRANGE: ${row.number} - ${row.number}\n${row.number}, "${row.name}"\n`;
+              });
+              manifestContent += `[\/GO]\n\n`;
+            }
+            zip.file(`${appName}_manifest.txt`, manifestContent.trim());
+          });
+          zip.generateAsync({ type: "blob" }).then((content) => {
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(content);
+            a.download = "Apps_Export.zip";
+            a.type = "application/zip";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+          });
+        });
+
+          // Export single app manifest
+          exportAppBtn.addEventListener("click", () => {
+            if (!currentAppName) {
+              alert("No app selected to export.");
+              return;
+            }
+            const apps = getApps();
+            const appData = apps[currentAppName];
+            if (!appData) {
+              alert("App data not found.");
+              return;
+            }
+            const { config, labels, gi, go, setvar } = appData;
+            let manifestContent = "";
+            // DI Section
+            if (config.diSize > 0) {
+              manifestContent += `[DI]\n`;
+              manifestContent += `RACK: ${config.diRack ?? ''}\n`;
+              manifestContent += `SLOT: ${config.diSlot ?? ''}\n`;
+              manifestContent += `START: ${config.diStartPoint}\n`;
+              manifestContent += `RANGE: ${config.diStartPoint} - ${config.diStartPoint + config.diSize - 1}\n`;
+              for (let i = 0; i < config.diSize; i++) {
+                const point = config.diStartPoint + i;
+                manifestContent += `${point}, "${labels.di?.[point] ?? ''}"\n`;
+              }
+              manifestContent += `[\/DI]\n\n`;
+            }
+            // DO Section
+            if (config.doSize > 0) {
+              manifestContent += `[DO]\n`;
+              manifestContent += `RACK: ${config.doRack ?? ''}\n`;
+              manifestContent += `SLOT: ${config.doSlot ?? ''}\n`;
+              manifestContent += `START: ${config.doStartPoint}\n`;
+              manifestContent += `RANGE: ${config.doStartPoint} - ${config.doStartPoint + config.doSize - 1}\n`;
+              for (let i = 0; i < config.doSize; i++) {
+                const point = config.doStartPoint + i;
+                manifestContent += `${point}, "${labels.do?.[point] ?? ''}"\n`;
+              }
+              manifestContent += `[\/DO]\n\n`;
+            }
+            // Registers Section
+            if (config.rSize > 0) {
+              manifestContent += `[Registers]\n`;
+              manifestContent += `START: ${config.rStartPoint}\n`;
+              manifestContent += `RANGE: ${config.rStartPoint} - ${config.rStartPoint + config.rSize - 1}\n`;
+              for (let i = 0; i < config.rSize; i++) {
+                const point = config.rStartPoint + i;
+                manifestContent += `${point}, "${labels.r?.[point] ?? ''}"\n`;
+              }
+              manifestContent += `[\/Registers]\n\n`;
+            }
+            // SETVAR Section (first)
+            if (setvar.length > 0) {
+              manifestContent += `[SETVAR]\n`;
+              setvar.forEach((row) => {
+                manifestContent += `${row.key} = ${row.value}\n`;
+              });
+              manifestContent += `[\/SETVAR]\n\n`;
+            }
+            // GI Section
+            if (gi.length > 0) {
+              manifestContent += `[GI]\n`;
+              gi.forEach((row) => {
+                manifestContent += `RACK: ${row.rack}\nSLOT: ${row.slot}\nSTART: ${row.start}\nLENGTH: ${row.length}\nRANGE: ${row.number} - ${row.number}\n${row.number}, "${row.name}"\n`;
+              });
+              manifestContent += `[\/GI]\n\n`;
+            }
+            // GO Section
+            if (go.length > 0) {
+              manifestContent += `[GO]\n`;
+              go.forEach((row) => {
+                manifestContent += `RACK: ${row.rack}\nSLOT: ${row.slot}\nSTART: ${row.start}\nLENGTH: ${row.length}\nRANGE: ${row.number} - ${row.number}\n${row.number}, "${row.name}"\n`;
+              });
+              manifestContent += `[\/GO]\n\n`;
+            }
+            // Download as .txt
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(new Blob([manifestContent.trim()], { type: "text/plain" }));
+            a.download = `${currentAppName}_manifest.txt`;
+            a.type = "text/plain";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+          });
+
+        // --- Initial Load ---
+        renderAppList();
+      });
+    </script>
   </body>
-</html>
 </html>

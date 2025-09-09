@@ -126,7 +126,7 @@
               >
                 Import
               </button>
-              <input type="file" id="file-input" class="hidden" accept=".txt" />
+              <input type="file" id="file-input" class="hidden" accept=".dt" />
             </div>
 
             <!-- Updated Configuration Section -->
@@ -687,7 +687,7 @@
             buildSection("do");
             buildSection("r");
 
-            appFolder.file("manifest.txt", manifestContent.trim());
+            appFolder.file("manifest.dt", manifestContent.trim());
           });
 
           zip.generateAsync({ type: "blob" }).then((content) => {
