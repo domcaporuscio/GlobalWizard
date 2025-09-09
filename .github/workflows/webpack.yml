@@ -20,7 +20,7 @@ jobs:
         working-directory: global-wizard
 
       - name: TailwindCSS
-        run: npx tailwindcss -i ./src/input.css -o ./dist/output.css --minify
+        run: npm run build-css
         working-directory: global-wizard
 
       - name: Predeploy

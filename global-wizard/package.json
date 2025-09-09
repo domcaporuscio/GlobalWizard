@@ -9,7 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d build"
+    "deploy": "gh-pages -d build",
+    "build-css": "tailwindcss -i ./src/input.css -o ./public/output.css --minify"
   },
   "dependencies": {
     "jszip": "^3.10.1",
